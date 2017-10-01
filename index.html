@@ -470,18 +470,10 @@ yaws_summaries</code></pre>
 <h2>Cross Validation and Model Building</h2>
 <p>Since n is rather large (~20,000) in this data set, LOOCV does not seem practical, therefore I will use K-Fold CV where K = 10 in an effort to reduce bias. I am choosing to use the Random Forest algoritm to ensure that all variables at least have a chance of being used at each split, in addition to the algorithm’s reputation for high accuracy. As shown by the output of fit, the out of bag error is expected to be 0.41%.</p>
 <pre class="r"><code>#Load packages
-library(caret)</code></pre>
-<pre><code>## Loading required package: lattice</code></pre>
-<pre><code>## Loading required package: ggplot2</code></pre>
-<pre class="r"><code>library(randomForest)</code></pre>
-<pre><code>## randomForest 4.6-12</code></pre>
-<pre><code>## Type rfNews() to see new features/changes/bug fixes.</code></pre>
-<pre><code>## 
-## Attaching package: 'randomForest'</code></pre>
-<pre><code>## The following object is masked from 'package:ggplot2':
-## 
-##     margin</code></pre>
-<pre class="r"><code>set.seed(10000)
+library(caret)
+library(randomForest)
+
+set.seed(10000)
 
 #Set cross validation parameters to use in model building
 fitControl &lt;- trainControl(method = &quot;cv&quot;, number = 10)
@@ -506,9 +498,26 @@ fit$finalModel</code></pre>
 ## C    0   14 3406    2    0 0.0046756283
 ## D    0    0   38 3177    1 0.0121268657
 ## E    0    0    0    4 3603 0.0011089548</code></pre>
-<pre class="r"><code>fit$
-
-#Predict on testing data
+<pre class="r"><code>fit</code></pre>
+<pre><code>## Random Forest 
+## 
+## 19622 samples
+##    52 predictor
+##     5 classes: 'A', 'B', 'C', 'D', 'E' 
+## 
+## No pre-processing
+## Resampling: Cross-Validated (10 fold) 
+## Summary of sample sizes: 17661, 17659, 17659, 17658, 17661, 17659, ... 
+## Resampling results across tuning parameters:
+## 
+##   mtry  Accuracy   Kappa    
+##    2    0.9955156  0.9943273
+##   27    0.9952097  0.9939406
+##   52    0.9891453  0.9862684
+## 
+## Accuracy was used to select the optimal model using  the largest value.
+## The final value used for the model was mtry = 2.</code></pre>
+<pre class="r"><code>#Predict on testing data
 test_predictions &lt;- data.frame(Problem = testing$problem_id,
                                Prediction = predict(fit, testing))</code></pre>
 </div>

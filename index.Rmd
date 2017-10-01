@@ -112,7 +112,7 @@ fit <- train(classe ~ ., data = training,
              method = "rf",
              trControl = fitControl)
 fit$finalModel
-fit$
+fit
 
 #Predict on testing data
 test_predictions <- data.frame(Problem = testing$problem_id,
