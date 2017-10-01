@@ -1,0 +1,122 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Marshall McQuillen"
+date: "10/1/2017"
+output: html_document
+---
+
+```{r get_data}
+setwd("/Users/marsh/data_science_coursera/practical_machine_learning/course_project/")
+training <- read.csv("pml-training.csv")
+testing <- read.csv("pml-testing.csv")
+```
+
+## Objective
+Predict "how well" a unilateral dumbbell curl was performed based on measurements taken from four sensors attached to the subject/dumbbell performing the exercise.
+
+"How well" a subject peformed the exercise will be classified in 5 possible ways:
+
+1. Performed correctly - classe A
+2. Throwing elbows to front - classe B
+3. Lifting the dumbbell only halfway up - classe C
+4. Lowering the dumbbell only halfway down - classe D
+5. Throwing the hips to the front - classe E
+
+## An "NA" Observation
+
+Looking at the training data set using the str() command, it is clear that there are some variables of the data set that appear to be mostly NA's. Continuing this thought, dividing the number of NA's in the entire data set by the total number of "cells" (number of observations multiplied by number of variables) will give us the percent of NA's in the entire training data set; 41%.
+
+I think it's important to note that, were this an independent data science project, I would almost certainly stop the project and question the validity of the data itself. One of the (Coursera-taught) principals of data science is *not* "pushing through" bad data. A data set with 41% NA's deserves, at the very least, a hesistant mind. Nevertheless, since this is not truly independent work, I'll push forward.
+
+```{r handling_na}
+str(training)
+sum(is.na(training))/(dim(training)[1]*dim(training)[2])
+```
+
+## EDA and Data Cleaning
+
+### Part 1
+
+In order to reduce the amount of NA's in the training data set, the code below returns the percentage of NA's per column. From the output of table(df$values), you can see that, of the 160 total variables in the data set, 67 variables are more than 97% NA, while the remaing variables are 0% NA. By my rationale, the time and computing resources saved by removing these variables for future modeling far outweighs the minor improvements that could be had by including the small amount of non-NA observations. Therefore, moving forward, the training data set will be defined as those 93 "clean" (0% NA) variables.
+
+```{r data_cleaning_part_1}
+#clean data based on NA percentages
+not_applicables <- lapply(training, is.na)
+total_NAs <- lapply(not_applicables, sum)
+percent_NAs <- lapply(total_NAs, function(x) {x/nrow(training)})
+df <- data.frame(values = unlist(percent_NAs), variables = names(percent_NAs))
+table(df$values)
+df2 <- subset(df, values < 0.95)
+vector_non_NAs <- as.character(df2$variables)
+training <- subset(training, select = vector_non_NAs)
+```
+
+### Part 2: EDA
+
+The first seven variables in the data set, seen by the output of colnames(training[,1:7]), are observation number, subject name, three timestamp variables and two window variables (used to calculate aggreations). Since none of these variables are measurements of how the exercise was performed, they will be removed from the data set.
+
+Looking back at the output from str(training), I noticed a couple variables that looked to contain mostly similar values: these included variables whose name contained "yaw", "kurtosis" or "skewness." By creating subsets based on these variables, along with calculating the variance and quantiles (using summary()), it becomes clear that the vast majority of values in these variables are 1's, with some extreme outliers that artificially pull up the variance. Removing all variables whose names are in these subsets should decrease the time needed to build a model without sacrificing too much Accuracy.
+
+*Note that the yaws data set does not include all of the yaw variables, only those where the word "yaw" is somewhere in the middle of the variables name.*
+
+```{r data_cleaning_part_2}
+#First seven variables unnecessary for prediction
+colnames(training[,1:7])
+training <- training[,c(-7:-1)]
+
+#View "yaw" data based on variance
+yaws <- grep(".yaw.", colnames(training))
+yaws_df <- training[,yaws]
+yaws_df <- as.data.frame(lapply(yaws_df, as.numeric))
+yaws_variances <- lapply(yaws_df, var)
+yaws_summaries <- lapply(yaws_df, summary)
+
+#View "kurtosis" data based on variance
+kurtosis <- grep("^kurtosis.", colnames(training))
+kurtosis_df <- training[,kurtosis]
+kurtosis_df <- as.data.frame(lapply(kurtosis_df, as.numeric))
+kurtosis_variances <- lapply(kurtosis_df, var)
+kurtosis_summaries <- lapply(kurtosis_df, summary)
+
+#View "skewness" data based on variance
+skewness <- grep("^skewness.", colnames(training))
+skewness_df <- training[,skewness]
+skewness_df <- as.data.frame(lapply(skewness_df, as.numeric))
+skewness_variances <- lapply(skewness_df, var)
+skewness_summaries <- lapply(skewness_df, summary)
+
+#View summaries
+yaws_summaries
+kurtosis_summaries
+skewness_summaries
+
+training <- training[,c(-yaws, -skewness, -kurtosis)]
+```
+
+## Cross Validation and Model Building
+
+Since n is rather large (~20,000) in this data set, LOOCV does not seem practical, therefore I will use K-Fold CV where K = 10 in an effort to reduce bias. I am choosing to use the Random Forest algoritm to ensure that all variables at least have a chance of being used at each split, in addition to the algorithm's reputation for high accuracy. As shown by the output of fit, the out of bag error is expected to be 0.41%.
+
+```{r model, cache = TRUE}
+#Load packages
+library(caret)
+library(randomForest)
+
+set.seed(10000)
+
+#Set cross validation parameters to use in model building
+fitControl <- trainControl(method = "cv", number = 10)
+
+#Fit a Random Forest model
+fit <- train(classe ~ ., data = training,
+             method = "rf",
+             trControl = fitControl)
+fit$finalModel
+fit$
+
+#Predict on testing data
+test_predictions <- data.frame(Problem = testing$problem_id,
+                               Prediction = predict(fit, testing))
+```
+
+
